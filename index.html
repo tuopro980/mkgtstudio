@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MK GT STUDIO — RGB Cyber Minecraft 3D Thumbnail Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Changa:wght@700;800;900&family=Inter:wght@400;600;700;900&family=Plus+Jakarta+Sans:wght@500;700;800&family=Press+Start+2P&family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.1/bundles/skinview3d.bundle.js"></script>
+  <style>
+    @keyframes rgbGlow {
+      0% { border-color: #3de0d2; box-shadow: 0 0 20px rgba(61,224,210,0.4), inset 0 0 15px rgba(61,224,210,0.15); }
+      33% { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59,130,246,0.4), inset 0 0 15px rgba(59,130,246,0.15); }
+      66% { border-color: #ec4899; box-shadow: 0 0 20px rgba(236,72,153,0.4), inset 0 0 15px rgba(236,72,153,0.15); }
+      100% { border-color: #3de0d2; box-shadow: 0 0 20px rgba(61,224,210,0.4), inset 0 0 15px rgba(61,224,210,0.15); }
+    }
+
+    @keyframes rgbText {
+      0% { color: #3de0d2; text-shadow: 0 0 10px rgba(61,224,210,0.8); }
+      33% { color: #60a5fa; text-shadow: 0 0 10px rgba(96,165,250,0.8); }
+      66% { color: #f472b6; text-shadow: 0 0 10px rgba(244,114,182,0.8); }
+      100% { color: #3de0d2; text-shadow: 0 0 10px rgba(61,224,210,0.8); }
+    }
+
+    :root {
+      --bg-base: #030712;
+      --bg-glass: rgba(10, 15, 28, 0.85);
+      --bg-panel-glass: rgba(15, 23, 42, 0.75);
+      --border-glass: rgba(59, 130, 246, 0.25);
+      --accent-neon: #3b82f6;
+      --cyan-neon: #3de0d2;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(61, 224, 210, 0.08) 0%, transparent 45%),
+        linear-gradient(to bottom, #030712, #010308);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', 'Vazirmatn', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    html[dir="ltr"] body {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    }
+
+    /* ================= LOADING SCREEN ================= */
+    #loader-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 4, 8, 0.94);
+      backdrop-filter: blur(24px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s;
+    }
+
+    #loader-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .shader-cube-wrapper {
+      perspective: 800px;
+      width: 84px;
+      height: 84px;
+      margin-bottom: 32px;
+      filter: drop-shadow(0 0 24px rgba(59, 130, 246, 0.6));
+    }
+
+    .shader-cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: spinShaderCube 3s infinite cubic-bezier(0.37, 0, 0.63, 1);
+    }
+
+    @keyframes spinShaderCube {
+      0% { transform: rotateX(-25deg) rotateY(0deg); }
+      100% { transform: rotateX(-25deg) rotateY(360deg); }
+    }
+
+    .s-face {
+      position: absolute;
+      width: 84px;
+      height: 84px;
+      border: 2px solid var(--cyan-neon);
+      background: rgba(15, 23, 42, 0.85);
+      box-shadow: inset 0 0 15px rgba(61, 224, 210, 0.4);
+    }
+
+    .s-top    { transform: rotateX(90deg) translateZ(42px); background: rgba(59, 130, 246, 0.4); }
+    .s-bottom { transform: rotateX(-90deg) translateZ(42px); background: rgba(15, 23, 42, 0.8); }
+    .s-front  { transform: translateZ(42px); }
+    .s-back   { transform: rotateY(180deg) translateZ(42px); }
+    .s-right  { transform: rotateY(90deg) translateZ(42px); }
+    .s-left   { transform: rotateY(-90deg) translateZ(42px); }
+
+    .loader-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.35rem;
+      animation: rgbText 4s infinite;
+      margin-bottom: 12px;
+      letter-spacing: 3px;
+    }
+
+    .loader-subtitle {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .shader-progress-box {
+      width: 300px;
+      max-width: 85vw;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .shader-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3de0d2, #3b82f6, #ec4899);
+      box-shadow: 0 0 12px #3de0d2;
+      transition: width 0.08s linear;
+    }
+
+    .loader-percent {
+      margin-top: 12px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.72rem;
+      color: var(--cyan-neon);
+    }
+
+    /* ================= HEADER ================= */
+    header {
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 2px solid;
+      animation: rgbGlow 6s infinite;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo-cube {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #3b82f6, #3de0d2);
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(59,130,246,0.5);
+    }
+
+    .brand h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.05rem;
+      animation: rgbText 5s infinite;
+    }
+
+    .badge-modern {
+      background: rgba(61, 224, 210, 0.12);
+      color: var(--cyan-neon);
+      border: 1px solid rgba(61, 224, 210, 0.3);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      border: 1px solid var(--border-glass);
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.86rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn:hover {
+      border-color: var(--cyan-neon);
+      background: rgba(59, 130, 246, 0.12);
+      box-shadow: 0 0 15px rgba(61,224,210,0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      border-color: rgba(59, 130, 246, 0.6);
+      color: #ffffff;
+      font-weight: 800;
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 2px solid;
+      animation: rgbGlow 4s infinite;
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    /* ================= MAIN LAYOUT ================= */
+    .workspace {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .glass-panel {
+      background: var(--bg-panel-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .section-title {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--cyan-neon);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-glass);
+      padding-bottom: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .skin-upload-box, .bg-upload-box {
+      border: 2px dashed rgba(59, 130, 246, 0.3);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      background: rgba(3, 7, 18, 0.6);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .skin-upload-box:hover, .bg-upload-box:hover {
+      border-color: var(--cyan-neon);
+      background: rgba(59, 130, 246, 0.1);
+      box-shadow: 0 0 20px rgba(61, 224, 210, 0.25);
+    }
+
+    #skin-head-preview {
+      width: 54px;
+      height: 54px;
+      border-radius: 8px;
+      border: 2px solid var(--cyan-neon);
+      image-rendering: pixelated;
+      background: #030712;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px rgba(61, 224, 210, 0.4);
+    }
+
+    .upload-info {
+      text-align: start;
+      font-size: 0.84rem;
+    }
+
+    .upload-info strong {
+      display: block;
+      color: var(--text-main);
+      margin-bottom: 3px;
+      font-weight: 700;
+    }
+
+    .upload-info span {
+      color: var(--text-muted);
+      font-size: 0.77rem;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .option-chip {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-glass);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .option-chip:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .option-chip.active {
+      background: rgba(59, 130, 246, 0.2);
+      border: 2px solid;
+      animation: rgbGlow 5s infinite;
+      color: var(--cyan-neon);
+      box-shadow: 0 0 15px rgba(59,130,246,0.3);
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      background: rgba(3, 7, 18, 0.8);
+      border: 1px solid var(--border-glass);
+      color: var(--text-main);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan-neon);
+      cursor: pointer;
+    }
+
+    input[type="text"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--cyan-neon);
+      box-shadow: 0 0 15px rgba(61, 224, 210, 0.3);
+      background: rgba(3, 7, 18, 0.95);
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ================= PREVIEW & STAGE ================= */
+    .stage-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .canvas-wrapper {
+      background: rgba(3, 7, 18, 0.85);
+      border: 2px solid;
+      animation: rgbGlow 6s infinite;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .canvas-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .res-badge {
+      background: rgba(61, 224, 210, 0.15);
+      color: var(--cyan-neon);
+      border: 1px solid rgba(61, 224, 210, 0.4);
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      box-shadow: 0 0 12px rgba(61, 224, 210, 0.3);
+    }
+
+    .canvas-container {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #010307;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 15px 35px rgba(0,0,0,0.6);
+      cursor: grab;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .canvas-container:active {
+      cursor: grabbing;
+    }
+
+    canvas#thumbnailCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .drag-hint {
+      position: absolute;
+      bottom: 12px;
+      right: 14px;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      color: #e2e8f0;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      pointer-events: none;
+      border: 1px solid var(--border-glass);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+
+    /* Prompt Box */
+    .prompt-card {
+      background: var(--bg-panel-glass);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .prompt-output {
+      background: #010307;
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'Inter', monospace;
+      font-size: 0.86rem;
+      line-height: 1.6;
+      color: #3de0d2;
+      min-height: 85px;
+      resize: vertical;
+      direction: ltr;
+      text-align: left;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.7);
+    }
+
+    .prompt-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 4, 8, 0.88);
+      backdrop-filter: blur(16px);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #0b1329;
+      border: 2px solid;
+      animation: rgbGlow 5s infinite;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(90px);
+      background: linear-gradient(135deg, #2563eb, #3de0d2);
+      color: #030712;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 800;
+      box-shadow: 0 10px 30px rgba(61, 224, 210, 0.4);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= LOADING SCREEN ================= -->
+  <div id="loader-overlay">
+    <div class="shader-cube-wrapper">
+      <div class="shader-cube">
+        <div class="s-face s-front"></div>
+        <div class="s-face s-back"></div>
+        <div class="s-face s-right"></div>
+        <div class="s-face s-left"></div>
+        <div class="s-face s-top"></div>
+        <div class="s-face s-bottom"></div>
+      </div>
+    </div>
+    <div class="loader-title" id="loader-brand-text">MK GT STUDIO</div>
+    <div class="loader-subtitle" id="loader-msg-text">در حال راه‌اندازی شیدرهای پیشرفته و نورپردازی RGB سه‌بعدی...</div>
+    <div class="shader-progress-box">
+      <div class="shader-progress-bar" id="loader-bar"></div>
+    </div>
+    <div class="loader-percent" id="loader-percent">0%</div>
+  </div>
+
+  <!-- ================= HEADER ================= -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo-cube"></div>
+      <h1 style="font-family: 'Press Start 2P', monospace; font-size: 1.05rem;">MK GT STUDIO</h1>
+      <span class="badge-modern">RGB SHADER 3D</span>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" onclick="openLoaderModal()">
+        <span>⚙️</span>
+        <span data-i18n="loaderSettingsBtn">تنظیمات لودینگ</span>
+      </button>
+      <button class="btn" onclick="startCustomLoader()">
+        <span>🔄</span>
+        <span data-i18n="replayLoaderBtn">تست لودینگ</span>
+      </button>
+      <button class="btn btn-gold" onclick="toggleLanguage()">
+        <span>🌐</span>
+        <span id="lang-label">English</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN STUDIO ================= -->
+  <main class="workspace">
+    <!-- Controls Sidebar -->
+    <aside class="glass-panel">
+      <div class="section-title">
+        <span>🧍</span>
+        <span data-i18n="skinSection">۱. آپلود اسکین سه‌بعدی ماینکرفت</span>
+      </div>
+
+      <div class="skin-upload-box" onclick="document.getElementById('skinInput').click()">
+        <canvas id="skin-head-preview" width="64" height="64"></canvas>
+        <div class="upload-info">
+          <strong data-i18n="uploadTitle">انتخاب فایل اسکین (.PNG)</strong>
+          <span id="skin-filename" data-i18n="uploadSub">اسکین پیش‌فرض سه‌بعدی فعال است (۶۴×۶۴)</span>
+        </div>
+        <input type="file" id="skinInput" accept="image/png" hidden />
+      </div>
+
+      <div class="section-title">
+        <span>🎬</span>
+        <span data-i18n="poseSection">۲. ایموت و ژست‌های جذاب سه‌بعدی</span>
+      </div>
+      <div class="options-grid" id="pose-options">
+        <button class="option-chip active" data-val="parkour" data-i18n="poseParkour">🏃 پرش پارکور پرو</button>
+        <button class="option-chip" data-val="sword" data-i18n="poseSword">⚔️ گارد شمشیر نئونی</button>
+        <button class="option-chip" data-val="pickaxe" data-i18n="posePickaxe">⛏️ کلنگ‌زنی غار</button>
+        <button class="option-chip" data-val="victory" data-i18n="poseVictory">🏆 پیروزی و وین</button>
+        <button class="option-chip" data-val="shocked" data-i18n="poseShocked">😱 واکنش شوکه یوتیوب</button>
+        <button class="option-chip" data-val="flex" data-i18n="poseFlex">🔥 فلکس و قدرت</button>
+      </div>
+
+      <div class="row-2">
+        <div class="control-group">
+          <label><span data-i18n="rotYLabel">چرخش افقی 3D</span><span id="rotYVal">-25°</span></label>
+          <input type="range" id="charRotY" min="-180" max="180" value="-25" oninput="update3DCamera()" />
+        </div>
+        <div class="control-group">
+          <label><span data-i18n="zoomLabel">زوم کاراکتر 3D</span><span id="zoomVal">100%</span></label>
+          <input type="range" id="charZoom" min="65" max="145" value="100" oninput="update3DCamera()" />
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>🗺️</span>
+        <span data-i18n="mapSection">۳. محیط شیدردار و پس‌زمینه دلخواه</span>
+      </div>
+      <div class="options-grid" id="map-options">
+        <button class="option-chip active" data-val="parkour_sky" data-i18n="mapParkour">☁️ آسمان پارکور (شیدر)</button>
+        <button class="option-chip" data-val="smp_village" data-i18n="mapSmp">🏡 سرور SMP طلایی</button>
+        <button class="option-chip" data-val="nether" data-i18n="mapNether">🔥 ندر و گدازه درخشان</button>
+        <button class="option-chip" data-val="cave_diamond" data-i18n="mapCave">💎 غار دایموند (RTX)</button>
+      </div>
+
+      <!-- Custom Background Upload -->
+      <div class="control-group" style="margin-top: 4px;">
+        <div class="bg-upload-box" onclick="document.getElementById('bgInput').click()">
+          <div style="font-size: 24px;">🌄</div>
+          <div class="upload-info">
+            <strong data-i18n="uploadBgTitle">آپلود پس‌زمینه دلخواه (.PNG / .JPG)</strong>
+            <span id="bg-filename" data-i18n="uploadBgSub">عکس دلخواه خود را برای پشت تامنیل انتخاب کنید</span>
+          </div>
+          <input type="file" id="bgInput" accept="image/*" hidden />
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>✍️</span>
+        <span data-i18n="textSection">۴. متن دو رنگ برجسته با خط و خطوط</span>
+      </div>
+      <div class="control-group">
+        <label data-i18n="bannerTextLabel">متن اصلی بنر (فارسی یا انگلیسی)</label>
+        <input type="text" id="thumbText" value="ایونت پارکور!" oninput="updateAutoPrompt()" />
+      </div>
+
+      <div class="row-2">
+        <div class="control-group">
+          <label data-i18n="textColor1">رنگ اول متن (گرادینت بالا)</label>
+          <select id="textCol1" onchange="updateAutoPrompt()">
+            <option value="#3de0d2">آبی سایبرپانک (#3de0d2)</option>
+            <option value="#3b82f6" selected>آبی سلطنتی (#3b82f6)</option>
+            <option value="#ffaa00">طلایی ماینکرفت (#ffaa00)</option>
+            <option value="#ec4899">صورتی نئونی (#ec4899)</option>
+            <option value="#55ff55">سبز امرالد (#55ff55)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label data-i18n="textColor2">رنگ دوم متن (گرادینت پایین)</label>
+          <select id="textCol2" onchange="updateAutoPrompt()">
+            <option value="#ffffff" selected>سفید درخشان (#ffffff)</option>
+            <option value="#3de0d2">فیروزه‌ای (#3de0d2)</option>
+            <option value="#fde047">زرد خورشیدی (#fde047)</option>
+            <option value="#f472b6">صورتی روشن (#f472b6)</option>
+            <option value="#60a5fa">آبی روشن (#60a5fa)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label data-i18n="fontFamilyLabel">فونت حرفه‌ای تامنیل</label>
+        <select id="fontFamily" onchange="updateAutoPrompt()">
+          <option value="Changa" data-i18n="fontChanga">چنگا ضخیم (یوتیوب فارسی)</option>
+          <option value="Press Start 2P" data-i18n="fontPixel">پیکسلی ماینکرفت (Classic)</option>
+          <option value="Vazirmatn" data-i18n="fontVazir">وزیرمتن اولترا (Modern Bold)</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- Stage Column -->
+    <section class="stage-column">
+      <div class="canvas-wrapper">
+        <div class="canvas-header">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <strong data-i18n="previewTitle">پیش‌نمایش زنده شیدر و نورپردازی RGB</strong>
+            <span class="res-badge">1280 × 720 • RGB SHADER</span>
+          </div>
+          <button class="btn btn-primary" onclick="downloadThumbnail()">
+            <span>⬇️</span>
+            <span data-i18n="downloadPngBtn">دانلود تامنیل سه‌بعدی (PNG)</span>
+          </button>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="thumbnailCanvas" width="1280" height="720"></canvas>
+          <div class="drag-hint" data-i18n="dragHint">🖱️ برای چرخش سه‌بعدی کاراکتر روی تصویر بکشید</div>
+        </div>
+      </div>
+
+      <!-- Auto Prompt Generator -->
+      <div class="prompt-card">
+        <div class="section-title">
+          <span>🤖</span>
+          <span data-i18n="promptSection">پرامپت‌ساز هوشمند و شیدردار (هماهنگ با سبک شما)</span>
+        </div>
+
+        <div class="row-2">
+          <div class="control-group">
+            <label data-i18n="stylePresetLabel">سبک رندر پرامپت</label>
+            <select id="promptStyle" onchange="updateAutoPrompt()">
+              <option value="shader_cinematic" data-i18n="styleShader">شیدر سینمایی RGB با volumetric sunbeams</option>
+              <option value="blender_3d" data-i18n="styleBlender">رندر سه‌بعدی Blender 3D و Ray Tracing</option>
+              <option value="vanilla_diy" data-i18n="styleVanilla">اسکرین‌شات تمیز و پیکسلی داخل بازی (DIY)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label data-i18n="skinDescLabel">توضیح ظاهری اسکین (خودکار + قابل ویرایش)</label>
+            <input type="text" id="skinAutoDesc" value="custom 3D Minecraft player skin" oninput="updateAutoPrompt()" />
+          </div>
+        </div>
+
+        <textarea id="generatedPrompt" class="prompt-output" readonly></textarea>
+
+        <div class="prompt-actions">
+          <span style="font-size:0.8rem; color:var(--text-muted);" data-i18n="promptHint">
+            این پرامپت با شیدرهای پیشرفته و نورپردازی حجمی برای هوش مصنوعی تولید شده است.
+          </span>
+          <button class="btn btn-primary" onclick="copyPrompt()">
+            <span>📋</span>
+            <span data-i18n="copyPromptBtn">کپی پرامپت هوشمند</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= LOADER MODAL ================= -->
+  <div class="modal-backdrop" id="loaderModal">
+    <div class="modal-box">
+      <div class="section-title">
+        <span>⏱️</span>
+        <span data-i18n="modalTitle">تنظیمات صفحه لودینگ (حداقل ۳ ثانیه)</span>
+      </div>
+
+      <div class="control-group">
+        <label data-i18n="loaderDurationLabel">مدت زمان لودینگ (ثانیه — حداقل ۳.۲ ثانیه)</label>
+        <input type="number" id="customLoaderSec" min="3.2" max="15" step="0.5" value="3.8" />
+      </div>
+
+      <div class="control-group">
+        <label data-i18n="loaderCustomTextLabel">متن سفارشی لودینگ</label>
+        <input type="text" id="customLoaderMsg" value="در حال راه‌اندازی شیدرهای پیشرفته و نورپردازی RGB سه‌بعدی..." />
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+        <button class="btn" onclick="closeLoaderModal()" data-i18n="cancelBtn">بستن</button>
+        <button class="btn btn-primary" onclick="saveAndTestLoader()" data-i18n="saveTestBtn">ذخیره و تست لودینگ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">کپی شد!</div>
+
+  <script>
+    let currentLang = 'fa';
+    let customBgImage = null;
+
+    const translations = {
+      fa: {
+        loaderSettingsBtn: "تنظیمات لودینگ",
+        replayLoaderBtn: "تست لودینگ",
+        skinSection: "۱. آپلود اسکین سه‌بعدی ماینکرفت",
+        uploadTitle: "انتخاب فایل اسکین (.PNG)",
+        uploadSub: "اسکین پیش‌فرض سه‌بعدی فعال است (۶۴×۶۴)",
+        poseSection: "۲. ایموت و ژست‌های جذاب سه‌بعدی",
+        poseParkour: "🏃 پرش پارکور پرو",
+        poseSword: "⚔️ گارد شمشیر نئونی",
+        posePickaxe: "⛏️ کلنگ‌زنی غار",
+        poseVictory: "🏆 پیروزی و وین",
+        poseShocked: "😱 واکنش شوکه یوتیوب",
+        poseFlex: "🔥 فلکس و قدرت",
+        rotYLabel: "چرخش افقی 3D",
+        zoomLabel: "زوم کاراکتر 3D",
+        mapSection: "۳. محیط شیدردار و پس‌زمینه دلخواه",
+        mapParkour: "☁️ آسمان پارکور (شیدر)",
+        mapSmp: "🏡 سرور SMP طلایی",
+        mapNether: "🔥 ندر و گدازه درخشان",
+        mapCave: "💎 غار دایموند (RTX)",
+        uploadBgTitle: "آپلود پس‌زمینه دلخواه (.PNG / .JPG)",
+        uploadBgSub: "عکس دلخواه خود را برای پشت تامنیل انتخاب کنید",
+        textSection: "۴. متن دو رنگ برجسته با خط و خطوط",
+        bannerTextLabel: "متن اصلی بنر (فارسی یا انگلیسی)",
+        textColor1: "رنگ اول متن (گرادینت بالا)",
+        textColor2: "رنگ دوم متن (گرادینت پایین)",
+        fontFamilyLabel: "فونت حرفه‌ای تامنیل",
+        fontChanga: "چنگا ضخیم (یوتیوب فارسی)",
+        fontPixel: "پیکسلی ماینکرفت (Classic)",
+        fontVazir: "وزیرمتن اولترا (Modern Bold)",
+        previewTitle: "پیش‌نمایش زنده شیدر و نورپردازی RGB",
+        downloadPngBtn: "دانلود تامنیل سه‌بعدی (PNG)",
+        dragHint: "🖱️ برای چرخش سه‌بعدی کاراکتر روی تصویر بکشید",
+        promptSection: "پرامپت‌ساز هوشمند و شیدردار (هماهنگ با سبک شما)",
+        stylePresetLabel: "سبک رندر پرامپت",
+        styleShader: "شیدر سینمایی RGB با volumetric sunbeams",
+        styleBlender: "رندر سه‌بعدی Blender 3D و Ray Tracing",
+        styleVanilla: "اسکرین‌شات تمیز و پیکسلی داخل بازی (DIY)",
+        skinDescLabel: "توضیح ظاهری اسکین (خودکار + قابل ویرایش)",
+        promptHint: "این پرامپت با شیدرهای پیشرفته و نورپردازی حجمی برای هوش مصنوعی تولید شده است.",
+        copyPromptBtn: "کپی پرامپت هوشمند",
+        modalTitle: "تنظیمات صفحه لودینگ (حداقل ۳ ثانیه)",
+        loaderDurationLabel: "مدت زمان لودینگ (ثانیه — حداقل ۳.۲ ثانیه)",
+        loaderCustomTextLabel: "متن سفارشی لودینگ",
+        cancelBtn: "بستن",
+        saveTestBtn: "ذخیره و تست لودینگ",
+        toastCopied: "پرامپت هوشمند کپی شد!",
+        toastDownloaded: "تامنیل شیدردار سه‌بعدی PNG (1280x720) دانلود شد!",
+        toastSkinLoaded: "اسکین جدید روی موتور سه‌بعدی بارگذاری شد!",
+        toastBgLoaded: "پس‌زمینه دلخواه با موفقیت اعمال شد!"
+      },
+      en: {
+        loaderSettingsBtn: "Loader Settings",
+        replayLoaderBtn: "Replay Loader",
+        skinSection: "1. Upload 3D Minecraft Skin",
+        uploadTitle: "Choose Skin File (.PNG)",
+        uploadSub: "Default 3D Steve skin active (64x64)",
+        poseSection: "2. 3D Emotes & Dynamic Poses",
+        poseParkour: "🏃 Pro Parkour Jump",
+        poseSword: "⚔️ Neon Sword Guard",
+        posePickaxe: "⛏️ Cave Mining Pose",
+        poseVictory: "🏆 Victory Emote",
+        poseShocked: "😱 YouTube Shocked",
+        poseFlex: "🔥 Power Flex",
+        rotYLabel: "3D Y-Rotation",
+        zoomLabel: "3D Zoom",
+        mapSection: "3. Environment, Shaders & Custom Background",
+        mapParkour: "☁️ Sky Parkour (Shader)",
+        mapSmp: "🏡 Golden SMP Server",
+        mapNether: "🔥 Glowing Nether Lava",
+        mapCave: "💎 Diamond Cave (RTX)",
+        uploadBgTitle: "Upload Custom Background (.PNG / .JPG)",
+        uploadBgSub: "Choose any image for your thumbnail background",
+        textSection: "4. Two-Tone Embossed Text with Outlines",
+        bannerTextLabel: "Main Banner Text",
+        textColor1: "Text Color 1 (Top Gradient)",
+        textColor2: "Text Color 2 (Bottom Gradient)",
+        fontFamilyLabel: "Pro Thumbnail Font",
+        fontChanga: "Changa Heavy (YouTube Style)",
+        fontPixel: "Classic Minecraft Pixel",
+        fontVazir: "Vazirmatn Ultra Bold",
+        previewTitle: "Live RGB Shader & Lighting Preview",
+        downloadPngBtn: "Download 3D Thumbnail (PNG)",
+        dragHint: "🖱️ Drag on preview to rotate 3D character",
+        promptSection: "Smart Shader Prompt Generator (Synced with Style)",
+        stylePresetLabel: "Prompt Render Style",
+        styleShader: "Cinematic RGB Shader with volumetric sunbeams",
+        styleBlender: "Blender 3D Render with Ray Tracing",
+        styleVanilla: "Clean In-Game Pixel Screenshot (DIY)",
+        skinDescLabel: "Skin Appearance Details (Auto + Editable)",
+        promptHint: "Generated with advanced shaders and volumetric lighting for AI.",
+        copyPromptBtn: "Copy Smart Prompt",
+        modalTitle: "Loading Screen Settings (Min 3s)",
+        loaderDurationLabel: "Duration (Seconds — Min 3.2s)",
+        loaderCustomTextLabel: "Custom Loading Message",
+        cancelBtn: "Close",
+        saveTestBtn: "Save & Test Loader",
+        toastCopied: "Smart prompt copied to clipboard!",
+        toastDownloaded: "Shader 3D 1280x720 PNG downloaded!",
+        toastSkinLoaded: "New skin applied to 3D engine!",
+        toastBgLoaded: "Custom background applied successfully!"
+      }
+    };
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'fa' ? 'en' : 'fa';
+      document.documentElement.lang = currentLang;
+      document.documentElement.dir = currentLang === 'fa' ? 'rtl' : 'ltr';
+      document.getElementById('lang-label').textContent = currentLang === 'fa' ? 'English' : 'فارسی';
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[currentLang][key]) {
+          el.textContent = translations[currentLang][key];
+        }
+      });
+
+      const msgInput = document.getElementById('customLoaderMsg');
+      if (msgInput.value.includes("در حال راه‌اندازی") && currentLang === 'en') {
+        msgInput.value = "Initializing Advanced Shaders & RGB 3D Lighting...";
+      } else if (msgInput.value.includes("Initializing") && currentLang === 'fa') {
+        msgInput.value = "در حال راه‌اندازی شیدرهای پیشرفته و نورپردازی RGB سه‌بعدی...";
+      }
+      document.getElementById('loader-msg-text').textContent = msgInput.value;
+    }
+
+    let loaderConfig = {
+      durationMs: 3800,
+      message: "در حال راه‌اندازی شیدرهای پیشرفته و نورپردازی RGB سه‌بعدی..."
+    };
+
+    let loaderTimer = null;
+
+    function startCustomLoader() {
+      if (loaderTimer) clearInterval(loaderTimer);
+      const overlay = document.getElementById('loader-overlay');
+      const bar = document.getElementById('loader-bar');
+      const pct = document.getElementById('loader-percent');
+      const title = document.getElementById('loader-brand-text');
+      const msg = document.getElementById('loader-msg-text');
+
+      msg.textContent = loaderConfig.message;
+
+      overlay.classList.remove('hidden');
+      bar.style.width = '0%';
+      pct.textContent = '0%';
+
+      const startTime = performance.now();
+      const duration = Math.max(3200, loaderConfig.durationMs);
+
+      loaderTimer = setInterval(() => {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
+        bar.style.width = progress + '%';
+        pct.textContent = progress + '%';
+
+        if (progress >= 100) {
+          clearInterval(loaderTimer);
+          setTimeout(() => {
+            overlay.classList.add('hidden');
+          }, 250);
+        }
+      }, 40);
+    }
+
+    function openLoaderModal() {
+      document.getElementById('loaderModal').classList.add('open');
+    }
+
+    function closeLoaderModal() {
+      document.getElementById('loaderModal').classList.remove('open');
+    }
+
+    function saveAndTestLoader() {
+      let sec = parseFloat(document.getElementById('customLoaderSec').value);
+      if (isNaN(sec) || sec < 3.2) {
+        sec = 3.2;
+        document.getElementById('customLoaderSec').value = 3.2;
+      }
+      loaderConfig.durationMs = sec * 1000;
+      loaderConfig.message = document.getElementById('customLoaderMsg').value || "MK GT STUDIO";
+      closeLoaderModal();
+      startCustomLoader();
+    }
+
+    let skinCanvas = document.createElement('canvas');
+    skinCanvas.width = 64;
+    skinCanvas.height = 64;
+    let skinCtx = skinCanvas.getContext('2d');
+
+    let skinViewer3D = null;
+    let offscreen3DCanvas = document.createElement('canvas');
+    offscreen3DCanvas.width = 720;
+    offscreen3DCanvas.height = 720;
+
+    let selectedPose = 'parkour';
+    let selectedMap = 'parkour_sky';
+    let charPitch = 0.12;
+
+    function createDefaultSteveSkin() {
+      skinCtx.clearRect(0, 0, 64, 64);
+      skinCtx.fillStyle = '#b58363';
+      skinCtx.fillRect(8, 8, 8, 8);
+      skinCtx.fillStyle = '#3b2618';
+      skinCtx.fillRect(8, 8, 8, 2);
+      skinCtx.fillRect(8, 10, 1, 1);
+      skinCtx.fillRect(15, 10, 1, 1);
+      skinCtx.fillStyle = '#ffffff';
+      skinCtx.fillRect(9, 11, 1, 1);
+      skinCtx.fillRect(14, 11, 1, 1);
+      skinCtx.fillStyle = '#4c3f91';
+      skinCtx.fillRect(10, 11, 1, 1);
+      skinCtx.fillRect(13, 11, 1, 1);
+      skinCtx.fillStyle = '#7c4e38';
+      skinCtx.fillRect(10, 13, 4, 2);
+
+      skinCtx.fillStyle = '#2563eb';
+      skinCtx.fillRect(20, 20, 8, 12);
+      skinCtx.fillStyle = '#2563eb';
+      skinCtx.fillRect(44, 20, 4, 4);
+      skinCtx.fillStyle = '#b58363';
+      skinCtx.fillRect(44, 24, 4, 8);
+      skinCtx.fillStyle = '#2563eb';
+      skinCtx.fillRect(36, 52, 4, 4);
+      skinCtx.fillStyle = '#b58363';
+      skinCtx.fillRect(36, 56, 4, 8);
+      skinCtx.fillStyle = '#1e3a8a';
+      skinCtx.fillRect(4, 20, 4, 10);
+      skinCtx.fillStyle = '#38bdf8';
+      skinCtx.fillRect(4, 30, 4, 2);
+      skinCtx.fillStyle = '#1e3a8a';
+      skinCtx.fillRect(20, 52, 4, 10);
+      skinCtx.fillStyle = '#38bdf8';
+      skinCtx.fillRect(20, 62, 4, 2);
+
+      drawHeadPreview();
+    }
+
+    function init3DViewer() {
+      if (typeof skinview3d === 'undefined') return;
+      skinViewer3D = new skinview3d.SkinViewer({
+        canvas: offscreen3DCanvas,
+        width: 720,
+        height: 720,
+        skin: skinCanvas.toDataURL('image/png'),
+        preserveDrawingBuffer: true
+      });
+      skinViewer3D.autoRotate = false;
+      skinViewer3D.controls.enableRotate = false;
+      skinViewer3D.controls.enableZoom = false;
+
+      skinViewer3D.globalLight.intensity = 2.0;
+      skinViewer3D.cameraLight.intensity = 1.6;
+
+      apply3DPose(selectedPose);
+      update3DCamera();
+    }
+
+    function apply3DPose(pose) {
+      if (!skinViewer3D || !skinViewer3D.playerObject) return;
+      const p = skinViewer3D.playerObject.skin;
+
+      p.head.rotation.set(0, 0, 0);
+      p.body.rotation.set(0, 0, 0);
+      p.leftArm.rotation.set(0, 0, 0);
+      p.rightArm.rotation.set(0, 0, 0);
+      p.leftLeg.rotation.set(0, 0, 0);
+      p.rightLeg.rotation.set(0, 0, 0);
+      skinViewer3D.playerObject.rotation.set(0, 0, 0);
+
+      if (pose === 'parkour') {
+        skinViewer3D.playerObject.rotation.x = 0.22;
+        p.head.rotation.x = -0.25;
+        p.head.rotation.y = 0.15;
+        p.rightArm.rotation.x = -1.35;
+        p.rightArm.rotation.z = 0.25;
+        p.leftArm.rotation.x = 1.15;
+        p.leftArm.rotation.z = -0.25;
+        p.rightLeg.rotation.x = 1.05;
+        p.leftLeg.rotation.x = -0.95;
+      } else if (pose === 'sword') {
+        p.head.rotation.y = 0.18;
+        p.rightArm.rotation.x = -1.25;
+        p.rightArm.rotation.y = -0.25;
+        p.leftArm.rotation.x = 0.45;
+        p.leftArm.rotation.z = -0.2;
+        p.rightLeg.rotation.x = -0.35;
+        p.leftLeg.rotation.x = 0.4;
+      } else if (pose === 'pickaxe') {
+        p.head.rotation.x = -0.15;
+        p.rightArm.rotation.x = -2.1;
+        p.rightArm.rotation.z = 0.15;
+        p.leftArm.rotation.x = -1.6;
+        p.leftArm.rotation.z = -0.25;
+        p.rightLeg.rotation.x = -0.25;
+        p.leftLeg.rotation.x = 0.3;
+      } else if (pose === 'victory') {
+        skinViewer3D.playerObject.rotation.y = -0.2;
+        p.head.rotation.z = -0.1;
+        p.rightArm.rotation.z = 2.65;
+        p.rightArm.rotation.x = -0.3;
+        p.leftArm.rotation.z = -2.65;
+        p.leftArm.rotation.x = -0.3;
+        p.rightLeg.rotation.z = 0.15;
+        p.leftLeg.rotation.z = -0.15;
+      } else if (pose === 'shocked') {
+        p.head.rotation.x = -0.25;
+        p.rightArm.rotation.x = -2.55;
+        p.rightArm.rotation.z = 0.4;
+        p.leftArm.rotation.x = -2.55;
+        p.leftArm.rotation.z = -0.4;
+        p.rightLeg.rotation.z = 0.15;
+        p.leftLeg.rotation.z = -0.15;
+      } else if (pose === 'flex') {
+        p.head.rotation.y = 0.15;
+        p.rightArm.rotation.x = -1.1;
+        p.rightArm.rotation.z = 1.2;
+        p.leftArm.rotation.x = -1.1;
+        p.leftArm.rotation.z = -1.2;
+        p.rightLeg.rotation.x = 0.2;
+        p.leftLeg.rotation.x = -0.2;
+      }
+    }
+
+    function update3DCamera() {
+      const deg = parseFloat(document.getElementById('charRotY').value);
+      const zoomPct = parseFloat(document.getElementById('charZoom').value);
+      document.getElementById('rotYVal').textContent = deg + '°';
+      document.getElementById('zoomVal').textContent = zoomPct + '%';
+
+      if (!skinViewer3D) return;
+      const rad = (deg * Math.PI) / 180;
+      const dist = 42 * (100 / zoomPct);
+      skinViewer3D.camera.position.set(
+        Math.sin(rad) * dist,
+        Math.sin(charPitch) * dist + 2,
+        Math.cos(rad) * dist
+      );
+      skinViewer3D.camera.lookAt(0, 0, 0);
+    }
+
+    let isDragging3D = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    const containerEl = document.getElementById('canvasContainer');
+
+    containerEl.addEventListener('mousedown', (e) => {
+      isDragging3D = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging3D) return;
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+
+      const slider = document.getElementById('charRotY');
+      let nextDeg = parseFloat(slider.value) + dx * 0.65;
+      if (nextDeg > 180) nextDeg -= 360;
+      if (nextDeg < -180) nextDeg += 360;
+      slider.value = Math.round(nextDeg);
+
+      charPitch = Math.max(-0.5, Math.min(0.65, charPitch + dy * 0.008));
+      update3DCamera();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging3D = false;
+    });
+
+    function drawHeadPreview() {
+      const prev = document.getElementById('skin-head-preview');
+      const pctx = prev.getContext('2d');
+      pctx.imageSmoothingEnabled = false;
+      pctx.clearRect(0, 0, 64, 64);
+      pctx.drawImage(skinCanvas, 8, 8, 8, 8, 4, 4, 56, 56);
+      pctx.drawImage(skinCanvas, 40, 8, 8, 8, 2, 2, 60, 60);
+    }
+
+    function analyzeSkinColors() {
+      const imgData = skinCtx.getImageData(8, 8, 20, 24).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < imgData.length; i += 4) {
+        if (imgData[i + 3] > 128) {
+          r += imgData[i];
+          g += imgData[i + 1];
+          b += imgData[i + 2];
+          count++;
+        }
+      }
+      if (!count) return "custom 3D Minecraft character";
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+
+      let tone = "vibrant";
+      if (r > g + 40 && r > b + 40) tone = "red and warm-toned";
+      else if (g > r + 30 && g > b + 30) tone = "green and emerald-toned";
+      else if (b > r + 30 && b > g + 30) tone = "blue and cyan-toned";
+      else if (r > 180 && g > 150 && b < 100) tone = "gold and yellow-toned";
+      else if (r < 70 && g < 70 && b < 70) tone = "dark and shadowy";
+
+      return `custom ${tone} 3D Minecraft player skin`;
+    }
+
+    document.getElementById('skinInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const img = new Image();
+        img.onload = function () {
+          skinCanvas.width = img.width;
+          skinCanvas.height = img.height;
+          skinCtx.clearRect(0, 0, img.width, img.height);
+          skinCtx.drawImage(img, 0, 0);
+
+          document.getElementById('skin-filename').textContent = file.name;
+          drawHeadPreview();
+          if (skinViewer3D) {
+            skinViewer3D.loadSkin(skinCanvas.toDataURL('image/png'));
+          }
+          document.getElementById('skinAutoDesc').value = analyzeSkinColors();
+          updateAutoPrompt();
+          showToast(translations[currentLang].toastSkinLoaded);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('bgInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const img = new Image();
+        img.onload = function () {
+          customBgImage = img;
+          document.getElementById('bg-filename').textContent = file.name;
+          document.querySelectorAll('#map-options .option-chip').forEach(b => b.classList.remove('active'));
+          showToast(translations[currentLang].toastBgLoaded);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.querySelectorAll('#pose-options .option-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#pose-options .option-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedPose = btn.dataset.val;
+        apply3DPose(selectedPose);
+        updateAutoPrompt();
+      });
+    });
+
+    document.querySelectorAll('#map-options .option-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#map-options .option-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedMap = btn.dataset.val;
+        customBgImage = null;
+        document.getElementById('bg-filename').textContent = translations[currentLang].uploadBgSub;
+        updateAutoPrompt();
+      });
+    });
+
+    function drawIsometricBlock(ctx, cx, cy, size, topCol, leftCol, rightCol) {
+      const h = size * 0.5;
+      const w = size * 0.866;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - size);
+      ctx.lineTo(cx + w, cy - h);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx - w, cy - h);
+      ctx.closePath();
+      ctx.fillStyle = topCol;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(cx - w, cy - h);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy + size);
+      ctx.lineTo(cx - w, cy + h);
+      ctx.closePath();
+      ctx.fillStyle = leftCol;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + w, cy - h);
+      ctx.lineTo(cx + w, cy + h);
+      ctx.lineTo(cx, cy + size);
+      ctx.closePath();
+      ctx.fillStyle = rightCol;
+      ctx.fill();
+    }
+
+    function drawShaderMapBackground(ctx, W, H, mapType) {
+      if (customBgImage) {
+        ctx.drawImage(customBgImage, 0, 0, W, H);
+        return;
+      }
+
+      if (mapType === 'parkour_sky') {
+        const sky = ctx.createLinearGradient(0, 0, W, H);
+        sky.addColorStop(0, '#020b1f');
+        sky.addColorStop(0.4, '#1d3ed8');
+        sky.addColorStop(0.8, '#3b82f6');
+        sky.addColorStop(1, '#93c5fd');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, W, H);
+
+        const sunRay = ctx.createRadialGradient(1080, 80, 10, 1080, 80, 500);
+        sunRay.addColorStop(0, 'rgba(255, 255, 240, 0.95)');
+        sunRay.addColorStop(0.3, 'rgba(61, 224, 210, 0.4)');
+        sunRay.addColorStop(1, 'rgba(61, 224, 210, 0)');
+        ctx.fillStyle = sunRay;
+        ctx.fillRect(0, 0, W, H);
+
+        drawIsometricBlock(ctx, 220, 560, 75, '#22c55e', '#365314', '#1a2e05');
+        drawIsometricBlock(ctx, 480, 515, 75, '#22c55e', '#365314', '#1a2e05');
+        drawIsometricBlock(ctx, 730, 470, 78, '#3b82f6', '#1e3a8a', '#0f172a');
+        drawIsometricBlock(ctx, 960, 575, 115, '#22c55e', '#365314', '#1a2e05');
+      } else if (mapType === 'smp_village') {
+        const sky = ctx.createLinearGradient(0, 0, 0, H);
+        sky.addColorStop(0, '#030712');
+        sky.addColorStop(0.5, '#1d4ed8');
+        sky.addColorStop(1, '#38bdf8');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, W, H);
+
+        for (let i = 0; i < 8; i++) {
+          drawIsometricBlock(ctx, 140 + i * 155, 620, 100, '#38bdf8', '#1e3a8a', '#0f172a');
+        }
+        drawIsometricBlock(ctx, 260, 460, 115, '#2563eb', '#1e40af', '#172554');
+        drawIsometricBlock(ctx, 260, 355, 120, '#3de0d2', '#0891b2', '#164e63');
+      } else if (mapType === 'nether') {
+        const bg = ctx.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, '#0a0303');
+        bg.addColorStop(0.6, '#7f1d1d');
+        bg.addColorStop(1, '#c2410c');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(0, 570, W, 150);
+
+        drawIsometricBlock(ctx, 230, 560, 85, '#991b1b', '#450a0a', '#260303');
+        drawIsometricBlock(ctx, 960, 575, 120, '#b91c1c', '#450a0a', '#260303');
+      } else if (mapType === 'cave_diamond') {
+        const bg = ctx.createRadialGradient(850, 360, 60, 640, 360, 850);
+        bg.addColorStop(0, '#0891b2');
+        bg.addColorStop(0.5, '#0f172a');
+        bg.addColorStop(1, '#020408');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        drawIsometricBlock(ctx, 250, 540, 90, '#1e293b', '#0f172a', '#020617');
+        drawIsometricBlock(ctx, 640, 500, 80, '#22d3ee', '#0891b2', '#164e63');
+        drawIsometricBlock(ctx, 960, 575, 115, '#1e293b', '#0f172a', '#020617');
+      }
+    }
+
+    // Fully Minecraft-style 3D Items (Sword & Pickaxe)
+    function drawMinecraft3DItem(ctx, pose) {
+      if (pose === 'sword') {
+        ctx.save();
+        ctx.translate(830, 350);
+        ctx.rotate(-0.45);
+
+        // Diamond Blade 3D Pixels
+        ctx.fillStyle = '#0891b2';
+        ctx.fillRect(40, -10, 110, 32);
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(36, -16, 110, 32);
+        ctx.fillStyle = '#cffafe';
+        ctx.fillRect(40, -10, 96, 12);
+        ctx.fillStyle = '#0e7490';
+        ctx.fillRect(36, 16, 110, 6);
+
+        // Guard / Hilt
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillRect(24, -32, 16, 64);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(28, -28, 8, 56);
+
+        // Wooden Handle
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-12, -10, 36, 20);
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(-12, 6, 36, 4);
+
+        ctx.restore();
+      } else if (pose === 'pickaxe') {
+        ctx.save();
+        ctx.translate(820, 330);
+        ctx.rotate(-0.55);
+
+        // Stick Handle
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-4, -8, 130, 16);
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(-4, 4, 130, 4);
+
+        // Diamond Pickaxe Head 3D
+        ctx.fillStyle = '#0891b2';
+        ctx.fillRect(96, -65, 32, 130);
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(90, -72, 32, 130);
+        ctx.fillStyle = '#cffafe';
+        ctx.fillRect(104, -50, 10, 100);
+
+        ctx.restore();
+      }
+    }
+
+    function drawModernThumbnailText(ctx) {
+      const mainText = document.getElementById('thumbText').value.trim();
+      const col1 = document.getElementById('textCol1').value;
+      const col2 = document.getElementById('textCol2').value;
+      const fontChoice = document.getElementById('fontFamily').value;
+
+      ctx.save();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      let fontFamilyCSS = '"Changa", "Plus Jakarta Sans", sans-serif';
+      if (fontChoice === 'Press Start 2P') {
+        fontFamilyCSS = '"Press Start 2P", monospace';
+      } else if (fontChoice === 'Vazirmatn') {
+        fontFamilyCSS = '"Plus Jakarta Sans", "Vazirmatn", sans-serif';
+      }
+
+      if (mainText) {
+        ctx.font = `900 86px ${fontFamilyCSS}`;
+        ctx.lineJoin = 'round';
+
+        // Deep multi-layer black outline & shadow for punchy Minecraft/YouTube style
+        for (let d = 16; d >= 1; d--) {
+          ctx.lineWidth = 22;
+          ctx.strokeStyle = 'rgba(2, 6, 23, 0.92)';
+          ctx.strokeText(mainText, 58 + d * 0.7, 345 + d);
+          ctx.fillStyle = '#030712';
+          ctx.fillText(mainText, 58 + d * 0.7, 345 + d);
+        }
+
+        // Cyan / Blue neon outer outline glow
+        ctx.lineWidth = 15;
+        ctx.strokeStyle = '#0284c7';
+        ctx.strokeText(mainText, 58, 345);
+
+        // Two-tone vertical gradient fill
+        const textGrad = ctx.createLinearGradient(0, 240, 0, 390);
+        textGrad.addColorStop(0, col1);
+        textGrad.addColorStop(1, col2);
+        ctx.fillStyle = textGrad;
+        ctx.fillText(mainText, 58, 345);
+      }
+
+      // "MK GT" small classic watermark at the bottom left corner as requested
+      ctx.font = `700 20px "Press Start 2P", monospace`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 4;
+      ctx.strokeText("MK GT", 58, 665);
+      ctx.fillStyle = '#3de0d2';
+      ctx.fillText("MK GT", 58, 665);
+
+      ctx.restore();
+    }
+
+    function renderLoop() {
+      const canvas = document.getElementById('thumbnailCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+
+      ctx.clearRect(0, 0, W, H);
+
+      drawShaderMapBackground(ctx, W, H, selectedMap);
+
+      if (!customBgImage) {
+        ctx.save();
+        const shadow = ctx.createRadialGradient(955, 575, 10, 955, 575, 140);
+        shadow.addColorStop(0, 'rgba(0,0,0,0.8)');
+        shadow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = shadow;
+        ctx.beginPath();
+        ctx.ellipse(955, 575, 140, 38, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (skinViewer3D && offscreen3DCanvas) {
+        ctx.drawImage(offscreen3DCanvas, 595, -25, 720, 720);
+      }
+
+      drawMinecraft3DItem(ctx, selectedPose);
+      drawModernThumbnailText(ctx);
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    function updateAutoPrompt() {
+      const poseMap = {
+        parkour: "dynamic parkour jump mid-air over 3D floating isometric blocks",
+        sword: "holding a glowing 3D enchanted diamond sword in an epic combat pose",
+        pickaxe: "swinging a 3D diamond pickaxe dynamically while mining ores",
+        victory: "raising both arms in an epic victory and celebration emote",
+        shocked: "showing an extreme shocked and hyped YouTube reaction expression",
+        flex: "powerflexing muscles with epic cinematic lighting"
+      };
+
+      const bgMap = {
+        parkour_sky: "cinematic RGB shader Minecraft sky with volumetric sunbeams, god rays, and floating islands",
+        smp_village: "golden hour Minecraft SMP village with volumetric lighting and blue-orange sun flares",
+        nether: "epic glowing Minecraft Nether dimension with volumetric lava embers and crimson atmosphere",
+        cave_diamond: "deep underground Minecraft ray-traced cave illuminated by glowing diamond ore and blue crystals"
+      };
+
+      const styleMap = {
+        shader_cinematic: "cinematic RGB shader Minecraft render, volumetric lighting, god rays, subsurface scattering, 8K ultra-detailed gaming thumbnail",
+        blender_3d: "high-end Blender 3D Minecraft render, ray-tracing, crisp rim lighting, ambient occlusion, studio quality",
+        vanilla_diy: "clean high-resolution in-game Minecraft screenshot, sharp pixel textures, professional YouTube thumbnail composition"
+      };
+
+      const skinDesc = document.getElementById('skinAutoDesc').value.trim() || "custom 3D Minecraft player skin";
+      const mainText = document.getElementById('thumbText').value.trim();
+      const fontChoice = document.getElementById('fontFamily').value;
+      const styleKey = document.getElementById('promptStyle').value;
+
+      let textPart = "";
+      if (mainText) {
+        textPart = ` Bold 3D extruded two-tone YouTube thumbnail typography reading "${mainText}".`;
+      }
+
+      const finalPrompt = `Professional 3D Minecraft YouTube thumbnail (16:9, 1280x720), featuring a 3D rigged character wearing a ${skinDesc}, ${poseMap[selectedPose]}. Environment: ${customBgImage ? 'custom uploaded high-res background' : bgMap[selectedMap]}.${textPart} Style: ${styleMap[styleKey]}.`;
+
+      document.getElementById('generatedPrompt').value = finalPrompt;
+    }
+
+    function copyPrompt() {
+      const box = document.getElementById('generatedPrompt');
+      box.select();
+      navigator.clipboard.writeText(box.value);
+      showToast(translations[currentLang].toastCopied);
+    }
+
+    function downloadThumbnail() {
+      const canvas = document.getElementById('thumbnailCanvas');
+      const link = document.createElement('a');
+      link.download = 'MK-GT-STUDIO-Thumbnail.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast(translations[currentLang].toastDownloaded);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      createDefaultSteveSkin();
+      init3DViewer();
+      updateAutoPrompt();
+      startCustomLoader();
+      requestAnimationFrame(renderLoop);
+    });
+  </script>
+</body>
+</html>
